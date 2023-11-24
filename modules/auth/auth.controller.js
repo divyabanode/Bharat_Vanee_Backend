@@ -3,6 +3,9 @@ const { generateOTP } = require("../../utils/auth");
 const { sendSuccess, sendError } = require("../../utils/response");
 const { generateJWT } = require("../../utils/jwt");
 let unirest = require("unirest");
+const adminModel = require("../user/admin.model");
+const bcrypt = require('bcrypt');
+
 
 class Controller {
   async sendOTP(reqe, res, next) {
@@ -23,7 +26,7 @@ class Controller {
         },
         { upsert: true, new: true }
       )
-        .select("phone_number otp_verified role")
+        .select("phone_number otp_verified ")
         .lean();
     } catch (err) {
       return next(err);
@@ -90,41 +93,77 @@ class Controller {
     });
   }
 
-  async loginMobile(req, res, next) {
-    const { phone_number } = req.body;
 
-    let user;
+
+  async loginAdmin(req, res, next) {
     try {
-      user = await UserModel.findOne({ phone_number }).exec();
-    } catch (err) {
-      return next(err);
+      const { email, password } = req.body;
+      const user = await adminModel.findOne({ email });
+      if (!user) {
+        return res.status(404).send('User not found');
+      }
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (passwordMatch) {
+        const token = generateJWT({ id: user._id, email: user.email });
+        return sendSuccess(res, {
+          token,
+          account: user,
+        });
+      } else {
+        res.status(401).send('Incorrect password');
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).send('Internal Server Error');
     }
-    if (!user) {
-      return res.status(400).json({
-        message: "something is wrong ",
-      });
-    }
-    const token = generateJWT({ id: user._id, gender: user.gender });
-
-    return sendSuccess(res, {
-      token,
-      account: user,
-    });
   }
 
   async register(req, res, next) {
-    const { email, name, phone_number, age, gender, city, image, otp, location, otp_verified } = req.body;
+    const { email, name, phone_number, age, gender, city, image, otp, location } = req.body;
     if (!email || !name || !phone_number || !age || !gender || !city || !location) {
       return sendError(next, "please fill all fields", 401);
     }
     let account;
     try {
-      account = await UserModel.create(req.body)
+      let data = await UserModel.findOne({ phone_number })
+      if (!data) {
+        account = await UserModel.create(req.body)
+        return sendSuccess(res, { account });
+      } else {
+        return sendSuccess(res, data, "user already exist");
+
+      }
     } catch (err) {
       return next(err);
     }
-    return sendSuccess(res, { account });
   }
+
+
+  async registerAdmin(req, res, next) {
+    const { email, name, phone_number, age, gender, city, password } = req.body;
+    if (!email || !name || !phone_number || !age || !gender || !city || !password) {
+      return sendError(next, "please fill all fields", 401);
+    }
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = new adminModel({
+        email,
+        password: hashedPassword,
+        name, phone_number, age, gender, city
+      });
+
+      // Save the user to the database
+      let account = await newUser.save();
+
+      return sendSuccess(res, account, "Admin created successfully");
+    } catch (error) {
+      console.error(error);
+      res.status(500).send('Internal Server Error');
+    }
+  }
+
+
+
 }
 
 module.exports = new Controller();

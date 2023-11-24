@@ -30,6 +30,20 @@ class Controller {
       return next(err);
     }
   }
+  async findById(req, res, next) {
+    let account;
+    try {
+      account = await UserModel.findOne({ _id: req.params.id });
+      if (account) {
+        return sendSuccess(res, { account });
+      } else {
+        sendError(next, "user does not exist", 400)
+      }
+    }
+    catch (err) {
+      return next(err);
+    }
+  }
 }
 
 module.exports = new Controller();

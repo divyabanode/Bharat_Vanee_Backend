@@ -1,8 +1,13 @@
 const mongoose = require("mongoose");
-const UserSchema = new mongoose.Schema(
+const AdminSchema = new mongoose.Schema(
   {
     email: {
       type: String,
+      unique: true,
+    },
+
+    password: {
+      type: String
     },
 
     name: {
@@ -29,28 +34,14 @@ const UserSchema = new mongoose.Schema(
     image: {
       type: String
     },
-
-    otp: {
-      type: Number
-    },
-    
-    otp_verified: {
-      type: Boolean,
-      default: false,
-    },
-
-    location: {
-      type: String,
-    },
   },
   {
     timestamps: true,
   }
 );
 
-UserSchema.index({
+AdminSchema.index({
   phone_number: 1,
 });
 
-
-module.exports = mongoose.model("User", UserSchema);
+module.exports = mongoose.model("Admin", AdminSchema);

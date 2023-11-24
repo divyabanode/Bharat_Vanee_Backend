@@ -5,13 +5,22 @@ const controller = require("./auth.controller");
 router
   .route("/sendOTP")
   .post(controller.sendOTP);
+
+
 router
-  .route("/verifyOTP")
+  .route("/register")
+  .post(controller.register)
+
+router
+  .route("/login")
   .post(controller.verifyOTP);
 
 router
-  .route("/loginMobile")
-  .post(controller.loginMobile);
+  .route("/registerAdmin")
+  .post(controller.registerAdmin);
 
-router.route("/register").post(controller.register)
+router
+  .route("/loginAdmin")
+  .post(controller.loginAdmin);
+
 module.exports = router;
