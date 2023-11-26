@@ -5,6 +5,7 @@ const { generateJWT } = require("../../utils/jwt");
 let unirest = require("unirest");
 const adminModel = require("../user/admin.model");
 const bcrypt = require('bcrypt');
+const { uploadImageToS3 } = require("../images/images.controller");
 
 
 class Controller {
@@ -36,9 +37,8 @@ class Controller {
 
     req.query({
       "authorization": process.env.SMS_API_KEY,
-      "sender_id": "TXTIND",
-      "message": `Hi, ${otp} is your One-Time Password for Shona.`,
-      "route": "v3",
+      "variables_values": otp,
+      "route": "otp",
       "numbers": phone_number
     });
 
@@ -46,11 +46,12 @@ class Controller {
       "cache-control": "no-cache"
     });
 
-
+    console.log('req.send', req)
     req.end(function (res) {
+      console.log('first', res.error)
       if (res.error) throw new Error(res.error);
-
       console.log(res.body);
+
     });
     return sendSuccess(res, {
       message: "OTP has been sent!",
@@ -60,7 +61,7 @@ class Controller {
   }
 
   async verifyOTP(req, res, next) {
-    const { phone_number, otp, isAppDownloaded = false } = req.body;
+    const { phone_number, otp} = req.body;
 
     let user;
     try {
@@ -68,6 +69,7 @@ class Controller {
     } catch (err) {
       return next(err);
     }
+    console.log('user', user)
     if (!user) {
       return res.status(400).json({
         message: "something is wrong ",
@@ -85,8 +87,7 @@ class Controller {
     } catch (err) {
       return next(err);
     }
-    const token = generateJWT({ id: user._id, role: user.role });
-
+    const token = generateJWT({ id: user._id});
     return sendSuccess(res, {
       token,
       account: user,
@@ -119,7 +120,7 @@ class Controller {
   }
 
   async register(req, res, next) {
-    const { email, name, phone_number, age, gender, city, image, otp, location } = req.body;
+    const { email, name, phone_number, age, gender, city, location } = req.body;
     if (!email || !name || !phone_number || !age || !gender || !city || !location) {
       return sendError(next, "please fill all fields", 401);
     }
@@ -127,8 +128,10 @@ class Controller {
     try {
       let data = await UserModel.findOne({ phone_number })
       if (!data) {
-        account = await UserModel.create(req.body)
-        return sendSuccess(res, { account });
+        let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
+        let user = { ...req.body, image: img }
+        account = await UserModel.create(user)
+        return sendSuccess(res, account, "User created  successfully");
       } else {
         return sendSuccess(res, data, "user already exist");
 
@@ -146,9 +149,11 @@ class Controller {
     }
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
+      let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
       const newUser = new adminModel({
         email,
         password: hashedPassword,
+        image: img,
         name, phone_number, age, gender, city
       });
 

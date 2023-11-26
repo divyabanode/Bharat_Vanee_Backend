@@ -1,4 +1,5 @@
 const { sendSuccess, sendError } = require("../../utils/response");
+const { uploadImageToS3 } = require("../images/images.controller");
 const astrologerModel = require("./astrologer.model");
 class Controller {
   async createAstrologer(req, res, next) {
@@ -10,7 +11,9 @@ class Controller {
         console.log('account',)
         return sendError(next, "please fill all fields", 401);
       }
-      let data = await new astrologerModel(req.body);
+      let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
+      let user = { ...req.body, image: img }
+      let data = await new astrologerModel(user);
       account = data.save()
       if (account) {
         return sendSuccess(res, data, "Astrologer is created");

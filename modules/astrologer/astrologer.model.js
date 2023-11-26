@@ -34,7 +34,7 @@ const AstrologerSchema = new mongoose.Schema(
       type: String,
     },
 
-    PhotoURL: {
+    image: {
       type: String,
     },
   },
