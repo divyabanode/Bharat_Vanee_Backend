@@ -45,10 +45,7 @@ class Controller {
     req.headers({
       "cache-control": "no-cache"
     });
-
-    console.log('req.send', req)
     req.end(function (res) {
-      console.log('first', res.error)
       if (res.error) throw new Error(res.error);
       console.log(res.body);
 
@@ -61,7 +58,7 @@ class Controller {
   }
 
   async verifyOTP(req, res, next) {
-    const { phone_number, otp} = req.body;
+    const { phone_number, otp } = req.body;
 
     let user;
     try {
@@ -87,7 +84,7 @@ class Controller {
     } catch (err) {
       return next(err);
     }
-    const token = generateJWT({ id: user._id});
+    const token = generateJWT({ id: user._id });
     return sendSuccess(res, {
       token,
       account: user,
@@ -120,20 +117,21 @@ class Controller {
   }
 
   async register(req, res, next) {
-    const { email, name, phone_number, age, gender, city, location } = req.body;
-    if (!email || !name || !phone_number || !age || !gender || !city || !location) {
+    const { _id } = req.user;
+    const { email, name, age, gender, city, location } = req.body;
+    if (!email || !name || !age || !gender || !city || !location) {
       return sendError(next, "please fill all fields", 401);
     }
     let account;
     try {
-      let data = await UserModel.findOne({ phone_number })
-      if (!data) {
+      let data = await UserModel.findById(_id)
+      if (data) {
         let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
-        let user = { ...req.body, image: img }
-        account = await UserModel.create(user)
-        return sendSuccess(res, account, "User created  successfully");
+        let user = { ...req.body, image: img, phone_number: data.phone_number }
+        account = await UserModel.findByIdAndUpdate(_id, user, { new: true })
+        return sendSuccess(res, account, "User updated  successfully");
       } else {
-        return sendSuccess(res, data, "user already exist");
+        return sendSuccess(res, data, "User not exist");
 
       }
     } catch (err) {

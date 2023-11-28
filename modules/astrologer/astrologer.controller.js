@@ -3,22 +3,21 @@ const { uploadImageToS3 } = require("../images/images.controller");
 const astrologerModel = require("./astrologer.model");
 class Controller {
   async createAstrologer(req, res, next) {
+    const { _id } = req.user;
     const { email, name, bio, phone_number, specialization, YearsOfExperience, Rating } = req.body;
-    console.log('req.body', req.body)
     let account;
     try {
       if (!email || !name || !phone_number || !specialization || !YearsOfExperience || !Rating || !bio) {
-        console.log('account',)
         return sendError(next, "please fill all fields", 401);
       }
-      let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
-      let user = { ...req.body, image: img }
-      let data = await new astrologerModel(user);
-      account = data.save()
-      if (account) {
-        return sendSuccess(res, data, "Astrologer is created");
+      let data = await astrologerModel.findById(_id)
+      if (data) {
+        let img = await uploadImageToS3(process.env.AWS_S3_BUCKET, req.file.originalname, req.file.buffer);
+        let user = { ...req.body, image: img, phone_number: data.phone_number }
+        account = await astrologerModel.findByIdAndUpdate(_id, user, { new: true })
+        return sendSuccess(res, account, "Astrologer updated  successfully");
       } else {
-        return sendError(next, "something is wrong", 400)
+        return sendError(next, "astrologer not exist", 400)
       }
     } catch (err) {
       return res.status(404).send('internal server error');
