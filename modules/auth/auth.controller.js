@@ -21,14 +21,9 @@ class Controller {
         {
           phone_number,
           otp,
-          provider: {
-            name: "phone_number",
-          },
         },
         { upsert: true, new: true }
       )
-        .select("phone_number otp_verified ")
-        .lean();
     } catch (err) {
       return next(err);
     }
@@ -47,13 +42,11 @@ class Controller {
     });
     req.end(function (res) {
       if (res.error) throw new Error(res.error);
-      console.log(res.body);
 
     });
     return sendSuccess(res, {
       message: "OTP has been sent!",
       otp: otp,
-      userrole: user.role,
     });
   }
 
@@ -66,7 +59,6 @@ class Controller {
     } catch (err) {
       return next(err);
     }
-    console.log('user', user)
     if (!user) {
       return res.status(400).json({
         message: "something is wrong ",
@@ -78,7 +70,7 @@ class Controller {
     try {
       user = await UserModel.findByIdAndUpdate(
         user._id,
-        { otp_verified: true, otp: null },
+        { otp: null },
         { new: true }
       );
     } catch (err) {
