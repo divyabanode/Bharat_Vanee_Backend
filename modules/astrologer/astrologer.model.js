@@ -21,6 +21,13 @@ const AstrologerSchema = new mongoose.Schema(
       unique: true,
 
     },
+    otp: {
+      type: Number
+    },
+
+    active: {
+      type: Boolean
+    },
 
     specialization: {
       type: String,

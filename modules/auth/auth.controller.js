@@ -6,6 +6,7 @@ let unirest = require("unirest");
 const adminModel = require("../user/admin.model");
 const bcrypt = require('bcrypt');
 const { uploadImageToS3 } = require("../images/images.controller");
+const astrologerModel = require("../astrologer/astrologer.model");
 
 
 class Controller {
@@ -83,7 +84,79 @@ class Controller {
     });
   }
 
+  async sendOTPAstrologer(reqe, res, next) {
+    const { phone_number } = reqe.body;
+    let otp = generateOTP();
+    let user;
+    try {
+      user = await astrologerModel.findOneAndUpdate(
+        {
+          phone_number,
+        },
+        {
+          phone_number,
+          otp,
+        },
+        { upsert: true, new: true }
+      )
+    } catch (err) {
+      return next(err);
+    }
 
+    let req = unirest("GET", "https://www.fast2sms.com/dev/bulkV2");
+
+    req.query({
+      "authorization": process.env.SMS_API_KEY,
+      "variables_values": otp,
+      "route": "otp",
+      "numbers": phone_number
+    });
+
+    req.headers({
+      "cache-control": "no-cache"
+    });
+    req.end(function (res) {
+      if (res.error) throw new Error(res.error);
+
+    });
+    return sendSuccess(res, {
+      message: "OTP has been sent!",
+      otp: otp,
+    });
+  }
+
+  async verifyOTPAstrologer(req, res, next) {
+    const { phone_number, otp } = req.body;
+
+    let user;
+    try {
+      user = await astrologerModel.findOne({ phone_number }).exec();
+    } catch (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.status(400).json({
+        message: "something is wrong ",
+      });
+    }
+    if (parseInt(otp) !== user.otp) {
+      return sendError(next, "Incorrect OTP", 401);
+    }
+    try {
+      user = await UserModel.findByIdAndUpdate(
+        user._id,
+        { otp: null },
+        { new: true }
+      );
+    } catch (err) {
+      return next(err);
+    }
+    const token = generateJWT({ id: user._id });
+    return sendSuccess(res, {
+      token,
+      account: user,
+    });
+  }
 
   async loginAdmin(req, res, next) {
     try {

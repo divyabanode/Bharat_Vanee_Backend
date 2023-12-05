@@ -10,9 +10,16 @@ router
   .post(controller.sendOTP);
 
 router
+  .route("/sendOTPAstrologer")
+  .post(controller.sendOTPAstrologer);
+
+router
   .route("/login")
   .post(controller.verifyOTP);
 
+router
+  .route("/loginAstrologer")
+  .post(controller.verifyOTPAstrologer);
 router
   .route("/register")
   .post(upload.single('images', 20), checkAuth, controller.register)
